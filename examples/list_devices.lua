@@ -1,5 +1,9 @@
 print(string.format("| %13s | %60s | %20s | %9s |",
-                    "friendly name", "name", "uniq", "id"))
+                    "friendly name",
+                    "name",
+                    "uniq",
+                    "id"))
+
 print(string.format("| %13s | %60s | %20s | %9s |",
                     string.rep("-", 13),
                     string.rep("-", 60),

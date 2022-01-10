@@ -10,7 +10,7 @@ print(string.format("| %13s | %60s | %20s | %9s |",
                     string.rep("-", 20),
                     string.rep("-", 9)))
 
-for _, dev in pairs(list_all_devices()) do
+for _, dev in pairs(DEVICES) do
    print(string.format("| %13s | %60s | %20s | %04x:%04x |",
                        dev:friendly_name(),
                        dev:name(),

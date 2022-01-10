@@ -61,7 +61,7 @@ impl DeviceContext {
         }
     }
 
-    fn friendly_name(&self) -> DeviceResult<&str> {
+    pub fn friendly_name(&self) -> DeviceResult<&str> {
         Ok(friendly_name(self))
     }
 

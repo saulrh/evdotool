@@ -2,7 +2,6 @@ use anyhow::{Context, Result};
 use nix::sys::epoll::{
     epoll_create1, epoll_ctl, epoll_wait, EpollCreateFlags, EpollEvent, EpollFlags, EpollOp,
 };
-use rlua::prelude::LuaError;
 use rlua::Lua;
 use std::cell::Ref;
 use std::path::PathBuf;
@@ -38,12 +37,6 @@ struct EvdotoolOpt {
     script_args: Vec<String>,
 }
 
-#[derive(thiserror::Error, Debug)]
-enum EvdotoolError {
-    #[error("no bindings were created")]
-    NoBindings,
-}
-
 fn main() -> Result<()> {
     let lua = Lua::new();
 
@@ -54,31 +47,31 @@ fn main() -> Result<()> {
 
     let input = virtual_input::VirtualInput::new(time_util::CLOCK)?;
 
-    lua.context(|lua_ctx| {
+    lua.context(|lua_ctx| -> rlua::Result<()> {
         make_sleep(&lua_ctx)?;
         make_bind(&lua_ctx)?;
         make_all_event_codes(&lua_ctx)?;
         make_device_userdatas(&lua_ctx)?;
 
         lua_ctx.globals().set("INPUT", input)?;
-
-        Ok::<(), LuaError>(())
+        Ok(())
     })
-    .with_context(|| "while building lua runtime environment")?;
+    .with_context(|| "while setting globals")?;
 
-    lua.context(|lua_ctx| {
+    lua.context(|lua_ctx| -> rlua::Result<()> {
+        bindings::set_up_bindings(&lua_ctx)?;
+        Ok(())
+    })
+    .with_context(|| "while setting up bindings")?;
+
+    lua.context(|lua_ctx| -> rlua::Result<()> {
         lua_ctx.globals().set("arg", opt.script_args)?;
         lua_ctx.load(&script).eval()?;
-        Ok::<(), LuaError>(())
+        Ok(())
     })
     .with_context(|| "while running script")?;
 
     lua.context(|lua_ctx| -> rlua::Result<()> {
-        #[derive(Debug)]
-        struct BoundDevice<'a, 'b> {
-            dev: Ref<'b, DeviceContext>,
-            bindings: bindings::BindingsMap<'a>,
-        }
         let pollfd = epoll_create1(EpollCreateFlags::empty())
             .with_context(|| "in epoll_create1")
             .map_err(rlua::Error::external)?;
@@ -91,35 +84,25 @@ fn main() -> Result<()> {
         // this has to be defined after device_userdatas because it
         // borrows an rlua::Function from it and drops happen in
         // reverse order
-        let mut bound_devices: Vec<BoundDevice> = Vec::new();
+        let mut bound_devices: Vec<Ref<DeviceContext>> = Vec::new();
         for device_user_data in device_userdatas.iter() {
-            let bindings_table = device_user_data.get_user_value::<rlua::Table>()?;
-            let bindings = bindings::bindings_map_from(bindings_table)?;
+            let bound_device = device_user_data.borrow::<DeviceContext>().unwrap();
+            if bindings::device_has_bindings(&lua_ctx, &bound_device)
+                .with_context(|| "device_has_bindings")
+                .map_err(rlua::Error::external)?
+            {
+                let mut ev = EpollEvent::new(EpollFlags::EPOLLIN, bound_devices.len() as u64);
 
-            if bindings.len() == 0 {
-                continue;
+                epoll_ctl(pollfd, EpollOp::EpollCtlAdd, bound_device.raw_fd(), &mut ev)
+                    .with_context(|| "in epoll_ctl")
+                    .map_err(rlua::Error::external)?;
+                bound_devices.push(bound_device);
+                events.push(ev);
             }
-
-            let bound_device = BoundDevice {
-                dev: device_user_data.borrow::<DeviceContext>().unwrap(),
-                bindings: bindings,
-            };
-            let mut ev = EpollEvent::new(EpollFlags::EPOLLIN, bound_devices.len() as u64);
-
-            epoll_ctl(
-                pollfd,
-                EpollOp::EpollCtlAdd,
-                bound_device.dev.raw_fd(),
-                &mut ev,
-            )
-            .with_context(|| "in epoll_ctl")
-            .map_err(rlua::Error::external)?;
-            bound_devices.push(bound_device);
-            events.push(ev);
         }
 
         if bound_devices.len() == 0 {
-            return Err(rlua::Error::external(EvdotoolError::NoBindings));
+            panic!("No bound devices");
         }
 
         loop {
@@ -129,9 +112,9 @@ fn main() -> Result<()> {
             for event in events.iter() {
                 if event.events().contains(EpollFlags::EPOLLIN) {
                     let bound_device = &bound_devices[event.data() as usize];
-                    let input = bound_device.dev.next_event()?;
+                    let input = bound_device.next_event()?;
                     if let Some(callback) =
-                        bindings::get_in_bindings_map(&bound_device.bindings, &input.event_code)
+                        bindings::get_in_bindings_map(&lua_ctx, &bound_device, &input.event_code)?
                     {
                         callback.call::<_, ()>(input.value)?;
                     }

@@ -40,3 +40,10 @@ pub fn make_all_event_codes(ctx: &LuaContext) -> LuaResult<()> {
         ctx.create_sequence_from(evdev_util::all_event_codes().map(|ec| ec.to_string()))?,
     )
 }
+
+pub fn make_device_userdatas(ctx: &LuaContext) -> LuaResult<()> {
+    ctx.globals().set(
+        "DEVICES",
+        DeviceContext::list_all_as_userdata(time_util::CLOCK, ctx)?,
+    )
+}

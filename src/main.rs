@@ -58,14 +58,9 @@ fn main() -> Result<()> {
         make_sleep(&lua_ctx)?;
         make_bind(&lua_ctx)?;
         make_all_event_codes(&lua_ctx)?;
+        make_device_userdatas(&lua_ctx)?;
 
-        let globals = lua_ctx.globals();
-
-        globals.set(
-            "DEVICES",
-            DeviceContext::list_all_as_userdata(time_util::CLOCK, &lua_ctx)?,
-        )?;
-        globals.set("INPUT", input)?;
+        lua_ctx.globals().set("INPUT", input)?;
 
         Ok::<(), LuaError>(())
     })

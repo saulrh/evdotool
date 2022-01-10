@@ -227,12 +227,12 @@ impl VirtualInputWorker {
         match op {
             InputOp::Button { key, value } => self.button(time, key, value)?,
             InputOp::XAbs { x } => {
-                self.write_x_move(time - (MOUSE_PERIOD / 2), f64::MIN)?;
+                self.write_x_move(time - Time::from(MOUSE_PERIOD / 2), f64::MIN)?;
                 self.write_x_move(time, x)?;
                 self.syn(time)?;
             }
             InputOp::YAbs { y } => {
-                self.write_x_move(time - (MOUSE_PERIOD / 2), f64::MIN)?;
+                self.write_x_move(time - Time::from(MOUSE_PERIOD / 2), f64::MIN)?;
                 self.write_x_move(time, y)?;
                 self.syn(time)?;
             }

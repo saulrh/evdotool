@@ -1,41 +1,33 @@
-use core::ops::{Add, Mul, Sub};
 use core::time::Duration;
+use derive_more::{Add, Constructor, From, Mul, Sub};
 use evdev_rs::TimeVal;
 use nix::sys::time::TimeSpec;
 use nix::time::ClockId;
-use paste::paste;
 use rlua::prelude::{LuaContext, LuaError, LuaResult, LuaValue};
 use rlua::{FromLua, ToLua};
 
-pub const CLOCK: Clock = Clock {
-    clock: nix::time::ClockId::CLOCK_MONOTONIC,
-};
+// This is the clock that everything in the program will use.
+pub const CLOCK: Clock = Clock(nix::time::ClockId::CLOCK_MONOTONIC);
 
-#[derive(Copy, Clone, Debug)]
-pub struct Clock {
-    pub clock: ClockId,
-}
+#[derive(Copy, Clone, Debug, From, Constructor)]
+pub struct Clock(ClockId);
 
 impl Clock {
-    pub fn new(clock_id: ClockId) -> Self {
-        Clock { clock: clock_id }
-    }
-
     pub fn now(&self) -> nix::Result<Time> {
-        Ok(self.clock.now()?.into())
+        Ok(self.0.now()?.into())
     }
 
     pub fn raw_id(&self) -> i32 {
-        self.clock.as_raw()
+        self.0.as_raw()
     }
 }
 
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, Add, Sub, Mul)]
 /// Opaque duration struct. Usually used to represent instants by
 /// holding seconds-since-epoch on CLOCK_MONOTONIC, but since we're
-/// operating with two *different* c-ish time structs (evdev timevals
-/// and linux timespecs) we often have to use this to represent
-/// durations as well.
+/// operating with two different c-ish time structs (evdev timevals
+/// and linux timespecs) we often have to follow them and use this to
+/// represent durations as well.
 pub struct Time(
     /// Seconds
     f64,
@@ -54,7 +46,6 @@ impl From<Time> for f64 {
 }
 
 impl std::fmt::Debug for Time {
-    /// Friendly display for humans that *assumes* that this
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::result::Result<(), std::fmt::Error> {
         let local_now: chrono::DateTime<chrono::Local> = chrono::Local::now();
         let monotonic_now = Clock::new(nix::time::ClockId::CLOCK_MONOTONIC)
@@ -124,47 +115,3 @@ impl From<Time> for Duration {
         Duration::from_secs_f64(time.0)
     }
 }
-
-macro_rules! impl_binary_op {
-    ($trait:ident) => {
-        impl $trait<Time> for Time {
-            type Output = Time;
-            paste! {
-                fn [< $trait:lower >](self, rhs: Time) -> Self::Output {
-                    Time(self.0. [< $trait:lower >] (rhs.0))
-                }
-            }
-        }
-    };
-}
-
-impl_binary_op!(Add);
-impl_binary_op!(Sub);
-impl_binary_op!(Mul);
-
-macro_rules! impl_time_op {
-    ($trait:ident<$lhs:ty, $rhs:ty>) => {
-        impl $trait<$rhs> for $lhs {
-            type Output = Time;
-            paste! {
-                fn [< $trait:lower >](self, rhs: $rhs) -> Self::Output {
-                    Time::from(self). [< $trait:lower >] (Time::from(rhs))
-                }
-            }
-        }
-    };
-}
-
-macro_rules! impl_time_ops {
-    ($other:ty) => {
-        impl_time_op!(Add<$other, Time>);
-        impl_time_op!(Add<Time, $other>);
-        impl_time_op!(Sub<$other, Time>);
-        impl_time_op!(Sub<Time, $other>);
-        impl_time_op!(Mul<$other, Time>);
-        impl_time_op!(Mul<Time, $other>);
-    }
-}
-
-impl_time_ops!(f64);
-impl_time_ops!(Duration);

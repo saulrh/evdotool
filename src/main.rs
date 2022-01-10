@@ -11,7 +11,7 @@ use structopt::StructOpt;
 
 mod friendly_name;
 
-mod lua_util;
+mod bindings;
 
 mod evdev_util;
 
@@ -82,7 +82,7 @@ fn main() -> Result<()> {
         #[derive(Debug)]
         struct BoundDevice<'a, 'b> {
             dev: Ref<'b, DeviceContext>,
-            bindings: lua_util::BindingsMap<'a>,
+            bindings: bindings::BindingsMap<'a>,
         }
         let pollfd = epoll_create1(EpollCreateFlags::empty())
             .with_context(|| "in epoll_create1")
@@ -99,7 +99,7 @@ fn main() -> Result<()> {
         let mut bound_devices: Vec<BoundDevice> = Vec::new();
         for device_user_data in device_userdatas.iter() {
             let bindings_table = device_user_data.get_user_value::<rlua::Table>()?;
-            let bindings = lua_util::bindings_map_from(bindings_table)?;
+            let bindings = bindings::bindings_map_from(bindings_table)?;
 
             if bindings.len() == 0 {
                 continue;
@@ -136,7 +136,7 @@ fn main() -> Result<()> {
                     let bound_device = &bound_devices[event.data() as usize];
                     let input = bound_device.dev.next_event()?;
                     if let Some(callback) =
-                        lua_util::get_in_bindings_map(&bound_device.bindings, &input.event_code)
+                        bindings::get_in_bindings_map(&bound_device.bindings, &input.event_code)
                     {
                         callback.call::<_, ()>(input.value)?;
                     }

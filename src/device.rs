@@ -1,10 +1,9 @@
 use crate::evdev_util;
+use crate::friendly_name::friendly_name;
 use evdev_rs::enums::{EventCode, EV_ABS};
 use evdev_rs::util::event_code_to_int;
 use evdev_rs::{Device, DeviceWrapper, InputEvent};
-use lazy_static::lazy_static;
 use rlua::{ToLua, UserData, UserDataMethods};
-use std::collections::hash_map::DefaultHasher;
 use std::collections::HashSet;
 use std::hash::{Hash, Hasher};
 use std::result::Result;
@@ -45,6 +44,15 @@ pub struct DeviceContext {
     done: bool,
 }
 
+impl Hash for DeviceContext {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        self.dev.uniq().hash(state);
+        self.dev.name().hash(state);
+        self.dev.product_id().hash(state);
+        self.dev.vendor_id().hash(state);
+    }
+}
+
 impl DeviceContext {
     pub fn new(dev: Device) -> Self {
         Self {
@@ -54,23 +62,7 @@ impl DeviceContext {
     }
 
     fn friendly_name(&self) -> DeviceResult<&str> {
-        lazy_static! {
-            static ref CHARS: HashSet<char> = "0123456789 \t".chars().collect();
-            static ref WORDLIST: String =
-                String::from_utf8_lossy(include_bytes!("data/eff_short_wordlist_2_0.txt"))
-                    .into_owned();
-            static ref WORDS: Vec<&'static str> = WORDLIST
-                .lines()
-                .map(|l| l.trim_start_matches(|c: char| CHARS.contains(&c)))
-                .collect();
-        }
-        let mut s = DefaultHasher::new();
-        self.dev.uniq().hash(&mut s);
-        self.dev.name().hash(&mut s);
-        self.dev.product_id().hash(&mut s);
-        self.dev.vendor_id().hash(&mut s);
-        let hash = s.finish();
-        Ok(WORDS[(hash as usize) % WORDS.len()])
+        Ok(friendly_name(self))
     }
 
     pub fn get_capabilities(&self) -> DeviceResult<HashSet<EventCode>> {

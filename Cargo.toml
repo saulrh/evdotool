@@ -4,7 +4,7 @@ authors = ["Saul Reynolds-Haertle <saul@saulrh.com>"]
 description = "Scriptable key/mouse/joystick mapper for evdev"
 repository = "https://github.com/saulrh/evdotool"
 license = "MIT"
-version = "0.1.0"
+version = "0.2.0"
 edition = "2018"
 readme = "README.md"
 
@@ -20,7 +20,8 @@ nix = "0.23"
 thiserror = "1.0"
 anyhow = "1.0"
 chrono = "0.4"
-paste = "1.0"
+derive_more = "0.99"
+rand = "0.8"
 
 [patch.crates-io]
 evdev-rs = { path = "../evdev-rs" }

@@ -9,6 +9,8 @@ use std::path::PathBuf;
 use structopt::clap::AppSettings;
 use structopt::StructOpt;
 
+mod friendly_name;
+
 mod lua_util;
 
 mod evdev_util;

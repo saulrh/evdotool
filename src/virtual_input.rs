@@ -78,8 +78,7 @@ impl VirtualInput {
         evdev_util::codes_for(EventType::EV_KEY)
             .unwrap()
             .take(200)
-            .map(|code| dev.enable_event_code(&code, None))
-            .collect::<std::io::Result<()>>()?;
+            .try_for_each(|code| dev.enable_event_code(&code, None))?;
 
         // Enable relative mouse movements
         dev.enable_event_type(&EventType::EV_REL)?;
@@ -97,12 +96,12 @@ impl VirtualInput {
 
         // Create and start the worker
         let mut worker = VirtualInputWorker {
-            device: device,
+            device,
             period: MOUSE_PERIOD,
-            receiver: receiver,
+            receiver,
             x_interp: None,
             y_interp: None,
-            clock: clock,
+            clock,
         };
         thread::spawn(move || {
             worker.run();
@@ -126,13 +125,7 @@ impl VirtualInput {
     }
 
     pub fn button(&self, time: Option<Time>, key: EV_KEY, value: i32) -> InputResult<()> {
-        self.send(
-            time,
-            InputOp::Button {
-                key: key,
-                value: value,
-            },
-        )
+        self.send(time, InputOp::Button { key, value })
     }
 
     pub fn set_x_vel(&self, time: Option<Time>, dxdt: f64) -> InputResult<()> {
@@ -163,22 +156,22 @@ impl VirtualInput {
 impl UserData for VirtualInput {
     fn add_methods<'lua, M: UserDataMethods<'lua, Self>>(methods: &mut M) {
         methods.add_method("set_x_vel", |_, this, (dxdt, t): (f64, Option<Time>)| {
-            this.set_x_vel(t, dxdt).map_err(|e| LuaError::external(e))
+            this.set_x_vel(t, dxdt).map_err(LuaError::external)
         });
         methods.add_method("set_y_vel", |_, this, (dydt, t): (f64, Option<Time>)| {
-            this.set_y_vel(t, dydt).map_err(|e| LuaError::external(e))
+            this.set_y_vel(t, dydt).map_err(LuaError::external)
         });
         methods.add_method("move_x", |_, this, (dx, t): (f64, Option<Time>)| {
-            this.move_x(t, dx).map_err(|e| LuaError::external(e))
+            this.move_x(t, dx).map_err(LuaError::external)
         });
         methods.add_method("move_y", |_, this, (dy, t): (f64, Option<Time>)| {
-            this.move_y(t, dy).map_err(|e| LuaError::external(e))
+            this.move_y(t, dy).map_err(LuaError::external)
         });
         methods.add_method("set_x", |_, this, (x, t): (f64, Option<Time>)| {
-            this.set_x(t, x).map_err(|e| LuaError::external(e))
+            this.set_x(t, x).map_err(LuaError::external)
         });
         methods.add_method("set_y", |_, this, (y, t): (f64, Option<Time>)| {
-            this.set_y(t, y).map_err(|e| LuaError::external(e))
+            this.set_y(t, y).map_err(LuaError::external)
         });
         methods.add_method(
             "button",
@@ -190,8 +183,7 @@ impl UserData for VirtualInput {
                     .parse()
                     .map_err(|_| InputError::InvalidKeyCode(key_string))?;
 
-                this.button(t, key, value)
-                    .map_err(|e| LuaError::external(e))
+                this.button(t, key, value).map_err(LuaError::external)
             },
         );
     }
@@ -263,7 +255,7 @@ impl VirtualInputWorker {
         self.device.write_event(&InputEvent {
             time: time.into(),
             event_code: EventCode::EV_KEY(key),
-            value: value,
+            value,
         })?;
         self.syn(time)?;
         Ok(())

@@ -102,7 +102,7 @@ fn main() -> Result<()> {
             }
         }
 
-        if bound_devices.len() == 0 {
+        if bound_devices.is_empty() {
             panic!("No bound devices");
         }
 
@@ -115,7 +115,7 @@ fn main() -> Result<()> {
                     let bound_device = &bound_devices[event.data() as usize];
                     let input = bound_device.next_event()?;
                     if let Some(callback) =
-                        bindings::get_in_bindings_map(&lua_ctx, &bound_device, &input.event_code)?
+                        bindings::get_in_bindings_map(&lua_ctx, bound_device, &input.event_code)?
                     {
                         callback.call::<_, ()>(input.value)?;
                     }

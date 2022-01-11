@@ -15,7 +15,7 @@ pub fn make_sleep(ctx: &LuaContext) -> LuaResult<()> {
     )
 }
 
-pub fn make_bind<'a>(ctx: &LuaContext) -> LuaResult<()> {
+pub fn make_bind(ctx: &LuaContext) -> LuaResult<()> {
     ctx.globals().set(
         "bind",
         ctx.create_function(

@@ -76,9 +76,9 @@ pub fn event_code_from_str(s: String) -> Result<EventCode, CodeFromStrError> {
     let (type_prefix, _) = s
         .split_once("_")
         .ok_or_else(|| CodeFromStrError::NoSeparator(String::from(&s)))?;
-    let type_name = String::from("EV_") + type_of_event_code(&type_prefix);
-    let event_type = EventType::from_str(&type_name)
-        .ok_or_else(|| CodeFromStrError::UnknownEventType(String::from(type_name)))?;
+    let type_name = String::from("EV_") + type_of_event_code(type_prefix);
+    let event_type =
+        EventType::from_str(&type_name).ok_or(CodeFromStrError::UnknownEventType(type_name))?;
     let result = EventCode::from_str(&event_type, &s)
         .ok_or_else(|| CodeFromStrError::UnknownEventCode(String::from(&s), event_type))?;
     Ok(result)

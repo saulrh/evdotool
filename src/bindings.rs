@@ -12,7 +12,7 @@ fn device_key(dev: &DeviceContext) -> rlua::Result<String> {
     Ok(String::from(dev.friendly_name()?))
 }
 
-pub fn set_up_bindings<'lua>(ctx: &rlua::Context<'lua>) -> rlua::Result<()> {
+pub fn set_up_bindings(ctx: &rlua::Context) -> rlua::Result<()> {
     let t = ctx.create_table()?;
     for dev in device::DeviceContext::list_all(time_util::CLOCK)?.iter() {
         let dev_name = device_key(dev)?;
@@ -37,7 +37,7 @@ pub fn device_has_bindings(ctx: &rlua::Context, dev: &DeviceContext) -> rlua::Re
     dev_table.get(IS_BOUND_KEY)
 }
 
-pub fn set_in_bindings_table<'lua, 'a>(
+pub fn set_in_bindings_table<'lua>(
     ctx: &rlua::Context<'lua>,
     dev_ud: &rlua::AnyUserData<'lua>,
     event: &EventCode,
@@ -49,12 +49,12 @@ pub fn set_in_bindings_table<'lua, 'a>(
     let dev_table = t.get::<String, rlua::Table>(dev_name.clone())?;
     dev_table.set(s, callback)?;
     dev_table.set(IS_BOUND_KEY, true)?;
-    t.set(dev_name.clone(), dev_table)?;
+    t.set(dev_name, dev_table)?;
     ctx.set_named_registry_value(BINDINGS_NAME, t)?;
     Ok(())
 }
 
-pub fn get_in_bindings_map<'a, 'lua>(
+pub fn get_in_bindings_map<'lua>(
     ctx: &rlua::Context<'lua>,
     dev: &DeviceContext,
     event: &EventCode,

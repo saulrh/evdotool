@@ -1,7 +1,6 @@
 use crate::evdev_util;
 use crate::friendly_name::friendly_name;
 use evdev_rs::enums::{EventCode, EV_ABS};
-use evdev_rs::util::event_code_to_int;
 use evdev_rs::{Device, DeviceWrapper, InputEvent};
 use rlua::{ToLua, UserData, UserDataMethods};
 use std::collections::HashSet;
@@ -18,16 +17,10 @@ use crate::time_util::Clock;
 pub enum DeviceError {
     #[error("`{0}` is not a valid evdev event code")]
     InvalidEventCode(String),
-    #[error("evdev device does not have a field named `{0}`")]
-    MissingField(String),
-    #[error("expected value of type `{0}`, got `{1}`")]
-    WrongType(String, String),
     #[error(transparent)]
     Io(#[from] std::io::Error),
-    #[error("something crashed while holding a mutex")]
-    MutexPoisonedError,
     #[error(transparent)]
-    Unknown(#[from] rlua::Error),
+    FromLua(#[from] rlua::Error),
 }
 
 impl From<DeviceError> for rlua::Error {
@@ -41,7 +34,6 @@ pub type DeviceResult<T> = Result<T, DeviceError>;
 #[derive(Debug)]
 pub struct DeviceContext {
     dev: Device,
-    done: bool,
 }
 
 impl Hash for DeviceContext {
@@ -55,10 +47,7 @@ impl Hash for DeviceContext {
 
 impl DeviceContext {
     pub fn new(dev: Device) -> Self {
-        Self {
-            dev: dev,
-            done: false,
-        }
+        Self { dev }
     }
 
     pub fn friendly_name(&self) -> DeviceResult<&str> {
@@ -158,11 +147,6 @@ impl UserData for DeviceContext {
                     .into_iter()
                     .map(|ec| ec.to_string()),
             )
-        });
-
-        methods.add_method_mut("stop", |_, this, _: ()| {
-            this.done = true;
-            Ok(())
         });
     }
 }

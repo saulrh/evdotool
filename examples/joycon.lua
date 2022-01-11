@@ -7,7 +7,7 @@ if not joy then
 end
 
 local function with_win(key, value)
-   return sendkeys({"KEY_LEFTMETA", key}, value)
+   sendkeys({"KEY_LEFTMETA", key}, value)
 end
 
 -- Left joycon triggers, top and bottom. Also right joycon SL and SR,

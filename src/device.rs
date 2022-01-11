@@ -130,18 +130,6 @@ impl UserData for DeviceContext {
 
         methods.add_method("vendor_id", |_, this, _: ()| Ok(this.dev.vendor_id()));
 
-        methods.add_method("set_flat", |_, this, (axis, value): (String, u32)| {
-            let code = &EventCode::EV_ABS(
-                // <EV_ABS as FromStr>::Err is just (), so not only do
-                // we not need to use or hold on to the error for more
-                // info, we *can't* store it
-                EV_ABS::from_str(&axis).map_err(|_| DeviceError::InvalidEventCode(axis))?,
-            );
-            let (_, raw_code) = event_code_to_int(code);
-            dbg![&code, &raw_code, &value];
-            Ok(this.dev.set_abs_flat(raw_code, value as i32))
-        });
-
         methods.add_method("axis_info", |ctx, this, axis: String| {
             let code = &EventCode::EV_ABS(
                 // <EV_ABS as FromStr>::Err is just (), so not only do

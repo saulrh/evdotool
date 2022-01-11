@@ -106,6 +106,11 @@ A table of information about the given axis:
   honor it.
 - `resolution`: Resolution of the sensor, as reported by the device.
 
+#### `device:get_caps()`
+
+Returns a sequence of all of the event codes that the device can
+produce.
+
 ### `bind(device, axis, callback)`
 
 When the given device receives the specified event, the callback will

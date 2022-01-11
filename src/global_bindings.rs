@@ -42,3 +42,13 @@ pub fn make_device_userdatas(ctx: &LuaContext) -> LuaResult<()> {
         DeviceContext::list_all_as_userdata(time_util::CLOCK, ctx)?,
     )
 }
+
+pub fn make_included_luas(ctx: &LuaContext) -> LuaResult<()> {
+    ctx.load(include_bytes!("lua/find_device_by_friendly_name.lua"))
+        .exec()?;
+    ctx.load(include_bytes!("lua/find_device_by_ids.lua"))
+        .exec()?;
+    ctx.load(include_bytes!("lua/sendkey.lua")).exec()?;
+    ctx.load(include_bytes!("lua/sendkeys.lua")).exec()?;
+    Ok(())
+}

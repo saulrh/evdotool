@@ -52,6 +52,7 @@ fn main() -> Result<()> {
         make_bind(&lua_ctx)?;
         make_all_event_codes(&lua_ctx)?;
         make_device_userdatas(&lua_ctx)?;
+        make_included_luas(&lua_ctx)?;
 
         lua_ctx.globals().set("INPUT", input)?;
         Ok(())
